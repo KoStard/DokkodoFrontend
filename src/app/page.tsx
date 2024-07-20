@@ -5,7 +5,7 @@ import { useLLMChat } from '@/hooks/useLLMChat';
 
 export default function Chat() {
   const [input, setInput] = useState('');
-  const { messages, sendMessage, isLoading, error } = useLLMChat();
+  const { messages, sendMessage, editMessage, isLoading, error } = useLLMChat();
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -36,12 +36,11 @@ export default function Chat() {
     e.preventDefault();
     if (input.trim()) {
       if (editingIndex !== null) {
-        // Update the edited message and invalidate subsequent messages
-        const updatedMessages = messages.slice(0, editingIndex + 1);
-        updatedMessages[editingIndex] = { ...updatedMessages[editingIndex], content: input };
-        sendMessage(input, updatedMessages);
+        // Edit the message and discard subsequent history
+        editMessage(editingIndex, input);
         setEditingIndex(null);
       } else {
+        // Send a new message
         sendMessage(input);
       }
       setInput('');
@@ -62,7 +61,7 @@ export default function Chat() {
             <div className="chat-bubble">
               <span className="font-bold">{message.role}: </span>
               <span>{message.content}</span>
-              {message.role === 'user' && (
+              {message.role === 'user' && index !== messages.length - 1 && (
                 <button 
                   className="btn btn-xs ml-2" 
                   onClick={() => handleEdit(index)}
