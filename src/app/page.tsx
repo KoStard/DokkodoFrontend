@@ -15,6 +15,10 @@ export default function App() {
 
   useEffect(() => {
     fetchThreads();
+    const hashThreadId = window.location.hash.slice(1);
+    if (hashThreadId) {
+      setCurrentThreadId(hashThreadId);
+    }
   }, []);
 
   const fetchThreads = async () => {
@@ -37,6 +41,7 @@ export default function App() {
       const data: Thread = await response.json();
       setThreads([...threads, data]);
       setCurrentThreadId(data.id);
+      window.location.hash = data.id;
     } catch (error) {
       console.error('Failed to create thread:', error);
     }
@@ -49,6 +54,7 @@ export default function App() {
         setThreads(threads.filter(thread => thread.id !== id));
         if (currentThreadId === id) {
           setCurrentThreadId(null);
+          window.location.hash = '';
         }
       } catch (error) {
         console.error('Failed to delete thread:', error);
@@ -71,12 +77,21 @@ export default function App() {
     }
   };
 
+  const setCurrentThreadIdAndUpdateHash = (id: string | null) => {
+    setCurrentThreadId(id);
+    if (id) {
+      window.location.hash = id;
+    } else {
+      window.location.hash = '';
+    }
+  };
+
   return (
     <div className="flex h-screen">
       <ThreadList
         threads={threads}
         currentThreadId={currentThreadId}
-        onSelectThread={setCurrentThreadId}
+        onSelectThread={setCurrentThreadIdAndUpdateHash}
         onCreateThread={createThread}
         onDeleteThread={deleteThread}
         onRenameThread={renameThread}
