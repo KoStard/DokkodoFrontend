@@ -44,77 +44,68 @@ export const useLLMChat = (threadId: string) => {
     }
   }, [threadId]);
 
+  const callChat = useCallback(async () => {
+    // Start streaming the assistant's response
+    const response = await fetch('http://localhost:8000/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages }),
+    });
+
+    if (!response.ok) throw new Error('Failed to get assistant response');
+
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error('Failed to get response reader');
+
+    let assistantResponse = '';
+    let assistantMessageId = crypto.randomUUID();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const text = new TextDecoder().decode(value);
+      assistantResponse += text;
+      setMessages(prevMessages => {
+        const newMessages = [...prevMessages];
+        const lastMessage = newMessages[newMessages.length - 1];
+        if (lastMessage.role === 'assistant') {
+          lastMessage.content = assistantResponse;
+        } else {
+          newMessages.push({
+            id: assistantMessageId,
+            role: 'assistant',
+            content: assistantResponse,
+          });
+        }
+        return newMessages;
+      });
+    }
+
+    // Save the assistant's message to the thread
+    const assistantFormData = new FormData();
+    assistantFormData.append('content', assistantResponse);
+    assistantFormData.append('role', 'assistant');
+    assistantFormData.append('message_id', assistantMessageId);
+
+    await fetch(`http://localhost:8000/api/threads/${threadId}/messages`, {
+      method: 'POST',
+      body: assistantFormData,
+    });
+  }, [threadId]);
+
   const sendMessage = useCallback(async (formData: FormData) => {
     setIsLoading(true);
     setError(null);
     try {
-      const content = formData.get('content') as string;
-      const role = formData.get('role') as 'user' | 'assistant';
-      const files = formData.getAll('files') as File[];
-
-      const userMessage: Message = {
-        id: Date.now().toString(),
-        role,
-        content,
-        media_files: files.map(file => ({
-          filename: file.name,
-          content_type: file.type
-        }))
-      };
-
-      setMessages(prevMessages => [...prevMessages, userMessage]);
-
       // Send user message to the backend
-      await fetch(`http://localhost:8000/api/threads/${threadId}/messages`, {
+      const message = await (await fetch(`http://localhost:8000/api/threads/${threadId}/messages`, {
         method: 'POST',
         body: formData,
-      });
+      })).json();
 
-      // Start streaming the assistant's response
-      const response = await fetch('http://localhost:8000/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: content }),
-      });
+      setMessages(prevMessages => [...prevMessages, message]);
 
-      if (!response.ok) throw new Error('Failed to get assistant response');
-
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('Failed to get response reader');
-
-      let assistantResponse = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const text = new TextDecoder().decode(value);
-        assistantResponse += text;
-        setMessages(prevMessages => {
-          const newMessages = [...prevMessages];
-          const lastMessage = newMessages[newMessages.length - 1];
-          if (lastMessage.role === 'assistant') {
-            lastMessage.content = assistantResponse;
-          } else {
-            newMessages.push({
-              id: (Date.now() + 1).toString(),
-              role: 'assistant',
-              content: assistantResponse,
-            });
-          }
-          return newMessages;
-        });
-      }
-
-      // Save the assistant's message to the thread
-      const assistantFormData = new FormData();
-      assistantFormData.append('content', assistantResponse);
-      assistantFormData.append('role', 'assistant');
-
-      await fetch(`http://localhost:8000/api/threads/${threadId}/messages`, {
-        method: 'POST',
-        body: assistantFormData,
-      });
-
+      await callChat();
     } catch (err) {
       setError({ message: (err as Error).message });
     } finally {
@@ -151,6 +142,8 @@ export const useLLMChat = (threadId: string) => {
         }
         return newMessages;
       });
+
+      await callChat();
     } catch (err) {
       setError({ message: (err as Error).message });
     } finally {
