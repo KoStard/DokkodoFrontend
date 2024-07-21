@@ -52,7 +52,7 @@ export const useLLMChat = (threadId: string) => {
       const content = formData.get('content') as string;
       const role = formData.get('role') as 'user' | 'assistant';
       const files = formData.getAll('files') as File[];
-      
+
       const userMessage: Message = {
         id: Date.now().toString(),
         role,
@@ -79,7 +79,7 @@ export const useLLMChat = (threadId: string) => {
       });
 
       if (!response.ok) throw new Error('Failed to get assistant response');
-      
+
       const reader = response.body?.getReader();
       if (!reader) throw new Error('Failed to get response reader');
 
@@ -126,38 +126,41 @@ export const useLLMChat = (threadId: string) => {
     }
   }, [threadId]);
 
-  const editMessage = useCallback(async (messageIndex: number, formData: FormData) => {
+  const editMessage = useCallback(async (messageId: string, formData: FormData) => {
     setIsLoading(true);
     setError(null);
     try {
-      const messageId = messages[messageIndex].id;
       const response = await fetch(`http://localhost:8000/api/threads/${threadId}/messages/${messageId}`, {
         method: 'PUT',
         body: formData,
       });
       if (!response.ok) throw new Error('Failed to edit message');
-      
+
       const content = formData.get('content') as string;
       const files = formData.getAll('files') as File[];
-      
+
       setMessages(prevMessages => {
         const newMessages = [...prevMessages];
-        newMessages[messageIndex] = {
-          ...newMessages[messageIndex],
-          content,
-          media_files: files.map(file => ({
-            filename: file.name,
-            content_type: file.type
-          }))
-        };
-        return newMessages.slice(0, messageIndex + 1);
+        const messageIndex = newMessages.findIndex(msg => msg.id === messageId);
+        if (messageIndex !== -1) {
+          newMessages[messageIndex] = {
+            ...newMessages[messageIndex],
+            content,
+            media_files: files.map(file => ({
+              filename: file.name,
+              content_type: file.type
+            }))
+          };
+          return newMessages.slice(0, messageIndex + 1);
+        }
+        return newMessages;
       });
     } catch (err) {
       setError({ message: (err as Error).message });
     } finally {
       setIsLoading(false);
     }
-  }, [threadId, messages]);
+  }, [threadId]);
 
   return {
     messages,

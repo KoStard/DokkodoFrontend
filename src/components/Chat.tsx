@@ -21,7 +21,7 @@ const Chat: React.FC<ChatProps> = ({ threadId }) => {
   const [input, setInput] = useState<string>('');
   const [files, setFiles] = useState<File[]>([]);
   const { messages, sendMessage, editMessage, isLoading, isStreaming, error } = useLLMChat(threadId);
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingIndex, setEditingIndex] = useState<string | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -58,11 +58,14 @@ const Chat: React.FC<ChatProps> = ({ threadId }) => {
     }
   };
 
-  const handleEdit = (index: number) => {
-    setEditingIndex(index);
-    setInput(messages[index].content);
-    setFiles(messages[index].media_files?.map(file => new File([], file.filename, { type: file.content_type })) || []);
-    inputRef.current?.focus();
+  const handleEdit = (messageId: string) => {
+    const messageToEdit = messages.find(msg => msg.id === messageId);
+    if (messageToEdit) {
+      setEditingIndex(messageId);
+      setInput(messageToEdit.content);
+      setFiles(messageToEdit.media_files?.map(file => new File([], file.filename, { type: file.content_type })) || []);
+      inputRef.current?.focus();
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -83,12 +86,12 @@ const Chat: React.FC<ChatProps> = ({ threadId }) => {
   return (
     <div className="flex flex-col h-screen flex-grow">
       <div className="flex-grow overflow-y-auto p-4" ref={chatContainerRef}>
-        {messages.map((message: Message, index: number) => (
-          <div key={index} className={`chat ${message.role === 'user' ? 'chat-end' : 'chat-start'}`}>
+        {messages.map((message: Message) => (
+          <div key={message.id} className={`chat ${message.role === 'user' ? 'chat-end' : 'chat-start'}`}>
             <div className="chat-bubble">
               <span className="font-bold">{message.role}: </span>
               <span>{message.content}</span>
-              {isStreaming && index === messages.length - 1 && (
+              {isStreaming && message.id === messages[messages.length - 1].id && (
                 <span className="animate-pulse">▮</span>
               )}
               {message.media_files && message.media_files.length > 0 && (
@@ -107,9 +110,9 @@ const Chat: React.FC<ChatProps> = ({ threadId }) => {
                 </div>
               )}
               {message.role === 'user' && (
-                <button 
-                  className="btn btn-xs ml-2" 
-                  onClick={() => handleEdit(index)}
+                <button
+                  className="btn btn-xs ml-2"
+                  onClick={() => handleEdit(message.id)}
                   disabled={isLoading || isStreaming || editingIndex !== null}
                 >
                   Edit
@@ -123,7 +126,7 @@ const Chat: React.FC<ChatProps> = ({ threadId }) => {
       </div>
       <div className="p-4">
         <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-          <div 
+          <div
             className="border-2 border-dashed border-gray-300 p-4 rounded-lg"
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleFileDrop}
@@ -143,9 +146,9 @@ const Chat: React.FC<ChatProps> = ({ threadId }) => {
                 multiple
                 className="hidden"
               />
-              <button 
-                type="button" 
-                onClick={() => fileInputRef.current?.click()} 
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
                 className="btn btn-secondary btn-sm"
               >
                 Attach Files
@@ -155,9 +158,9 @@ const Chat: React.FC<ChatProps> = ({ threadId }) => {
                   {files.map((file, index) => (
                     <div key={index} className="flex items-center mt-1">
                       <span>{file.name}</span>
-                      <button 
-                        type="button" 
-                        onClick={() => removeFile(index)} 
+                      <button
+                        type="button"
+                        onClick={() => removeFile(index)}
                         className="btn btn-xs btn-ghost ml-2"
                       >
                         Remove
@@ -173,9 +176,9 @@ const Chat: React.FC<ChatProps> = ({ threadId }) => {
               {editingIndex !== null ? 'Update' : 'Send'}
             </button>
             {editingIndex !== null && (
-              <button 
-                type="button" 
-                className="btn btn-secondary" 
+              <button
+                type="button"
+                className="btn btn-secondary"
                 onClick={() => {
                   setEditingIndex(null);
                   setInput('');
