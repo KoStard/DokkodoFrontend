@@ -83,28 +83,42 @@ export const useLLMChat = (threadId: string) => {
       const reader = response.body?.getReader();
       if (!reader) throw new Error('Failed to get response reader');
 
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: '',
-      };
-
-      setMessages(prevMessages => [...prevMessages, assistantMessage]);
+      let assistantResponse = '';
       setIsStreaming(true);
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         const text = new TextDecoder().decode(value);
+        assistantResponse += text;
         setMessages(prevMessages => {
           const newMessages = [...prevMessages];
           const lastMessage = newMessages[newMessages.length - 1];
-          lastMessage.content += text;
+          if (lastMessage.role === 'assistant') {
+            lastMessage.content = assistantResponse;
+          } else {
+            newMessages.push({
+              id: (Date.now() + 1).toString(),
+              role: 'assistant',
+              content: assistantResponse,
+            });
+          }
           return newMessages;
         });
       }
 
       setIsStreaming(false);
+
+      // Save the assistant's message to the thread
+      const assistantFormData = new FormData();
+      assistantFormData.append('content', assistantResponse);
+      assistantFormData.append('role', 'assistant');
+
+      await fetch(`http://localhost:8000/api/threads/${threadId}/messages`, {
+        method: 'POST',
+        body: assistantFormData,
+      });
+
     } catch (err) {
       setError({ message: (err as Error).message });
     } finally {
