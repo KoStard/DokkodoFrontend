@@ -20,7 +20,7 @@ interface Message {
 const Chat: React.FC<ChatProps> = ({ threadId }) => {
   const [input, setInput] = useState<string>('');
   const [files, setFiles] = useState<File[]>([]);
-  const { messages, sendMessage, editMessage, isLoading, error } = useLLMChat(threadId);
+  const { messages, sendMessage, editMessage, isLoading, isStreaming, error } = useLLMChat(threadId);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -40,11 +40,14 @@ const Chat: React.FC<ChatProps> = ({ threadId }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (input.trim() || files.length > 0) {
+    if ((input.trim() || files.length > 0) && !isStreaming) {
       const formData = new FormData();
       formData.append('content', input);
       formData.append('role', 'user');
       files.forEach((file) => formData.append('files', file));
+
+      setInput('');
+      setFiles([]);
 
       if (editingIndex !== null) {
         await editMessage(editingIndex, formData);
@@ -52,21 +55,6 @@ const Chat: React.FC<ChatProps> = ({ threadId }) => {
       } else {
         await sendMessage(formData);
       }
-
-      setInput('');
-      setFiles([]);
-
-      // Simulate LLM response
-      const llmResponse = await fetch('http://localhost:8000/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: input }),
-      });
-      const llmData = await llmResponse.json();
-      const formDataToSend = new FormData();
-      formDataToSend.append('content', llmData.response);
-      formDataToSend.append('role', 'assistant');
-      sendMessage(formDataToSend);
     }
   };
 
@@ -100,6 +88,9 @@ const Chat: React.FC<ChatProps> = ({ threadId }) => {
             <div className="chat-bubble">
               <span className="font-bold">{message.role}: </span>
               <span>{message.content}</span>
+              {isStreaming && index === messages.length - 1 && (
+                <span className="animate-pulse">▮</span>
+              )}
               {message.media_files && message.media_files.length > 0 && (
                 <div className="mt-2">
                   {message.media_files.map((file, fileIndex) => (
@@ -119,7 +110,7 @@ const Chat: React.FC<ChatProps> = ({ threadId }) => {
                 <button 
                   className="btn btn-xs ml-2" 
                   onClick={() => handleEdit(index)}
-                  disabled={isLoading || editingIndex !== null}
+                  disabled={isLoading || isStreaming || editingIndex !== null}
                 >
                   Edit
                 </button>
@@ -178,7 +169,7 @@ const Chat: React.FC<ChatProps> = ({ threadId }) => {
             </div>
           </div>
           <div className="flex gap-2">
-            <button type="submit" className="btn btn-primary flex-grow" disabled={isLoading}>
+            <button type="submit" className="btn btn-primary flex-grow" disabled={isStreaming}>
               {editingIndex !== null ? 'Update' : 'Send'}
             </button>
             {editingIndex !== null && (

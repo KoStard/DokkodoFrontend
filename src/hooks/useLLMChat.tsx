@@ -20,6 +20,7 @@ export const useLLMChat = (threadId: string) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<ChatError | null>(null);
+  const [isStreaming, setIsStreaming] = useState<boolean>(false);
 
   useEffect(() => {
     if (threadId) {
@@ -48,19 +49,12 @@ export const useLLMChat = (threadId: string) => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(`http://localhost:8000/api/threads/${threadId}/messages`, {
-        method: 'POST',
-        body: formData,
-      });
-      if (!response.ok) throw new Error('Failed to send message');
-      
-      // Instead of using the response to update messages, we'll create a new message object
       const content = formData.get('content') as string;
       const role = formData.get('role') as 'user' | 'assistant';
       const files = formData.getAll('files') as File[];
       
-      const newMessage: Message = {
-        id: Date.now().toString(), // Use a temporary ID
+      const userMessage: Message = {
+        id: Date.now().toString(),
         role,
         content,
         media_files: files.map(file => ({
@@ -69,7 +63,48 @@ export const useLLMChat = (threadId: string) => {
         }))
       };
 
-      setMessages(prevMessages => [...prevMessages, newMessage]);
+      setMessages(prevMessages => [...prevMessages, userMessage]);
+
+      // Send user message to the backend
+      await fetch(`http://localhost:8000/api/threads/${threadId}/messages`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      // Start streaming the assistant's response
+      const response = await fetch('http://localhost:8000/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: content }),
+      });
+
+      if (!response.ok) throw new Error('Failed to get assistant response');
+      
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('Failed to get response reader');
+
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: '',
+      };
+
+      setMessages(prevMessages => [...prevMessages, assistantMessage]);
+      setIsStreaming(true);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const text = new TextDecoder().decode(value);
+        setMessages(prevMessages => {
+          const newMessages = [...prevMessages];
+          const lastMessage = newMessages[newMessages.length - 1];
+          lastMessage.content += text;
+          return newMessages;
+        });
+      }
+
+      setIsStreaming(false);
     } catch (err) {
       setError({ message: (err as Error).message });
     } finally {
@@ -88,7 +123,6 @@ export const useLLMChat = (threadId: string) => {
       });
       if (!response.ok) throw new Error('Failed to edit message');
       
-      // Update the message locally instead of using the response
       const content = formData.get('content') as string;
       const files = formData.getAll('files') as File[];
       
@@ -116,6 +150,7 @@ export const useLLMChat = (threadId: string) => {
     sendMessage,
     editMessage,
     isLoading,
+    isStreaming,
     error,
   };
 };
