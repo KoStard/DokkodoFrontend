@@ -20,7 +20,7 @@ interface Message {
 const Chat: React.FC<ChatProps> = ({ threadId }) => {
   const [input, setInput] = useState<string>('');
   const [files, setFiles] = useState<File[]>([]);
-  const { messages, sendMessage, editMessage, isLoading, isStreaming, error } = useLLMChat(threadId);
+  const { messages, sendMessage, editMessage, isLoading, error } = useLLMChat(threadId);
   const [editingIndex, setEditingIndex] = useState<string | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -40,7 +40,7 @@ const Chat: React.FC<ChatProps> = ({ threadId }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if ((input.trim() || files.length > 0) && !isStreaming) {
+    if ((input.trim() || files.length > 0) && !isLoading) {
       const formData = new FormData();
       formData.append('content', input);
       formData.append('role', 'user');
@@ -91,7 +91,7 @@ const Chat: React.FC<ChatProps> = ({ threadId }) => {
             <div className="chat-bubble">
               <span className="font-bold">{message.role}: </span>
               <span>{message.content}</span>
-              {isStreaming && message.id === messages[messages.length - 1].id && (
+              {isLoading && message.id === messages[messages.length - 1].id && (
                 <span className="animate-pulse">▮</span>
               )}
               {message.media_files && message.media_files.length > 0 && (
@@ -113,7 +113,7 @@ const Chat: React.FC<ChatProps> = ({ threadId }) => {
                 <button
                   className="btn btn-xs ml-2"
                   onClick={() => handleEdit(message.id)}
-                  disabled={isLoading || isStreaming || editingIndex !== null}
+                  disabled={isLoading || editingIndex !== null}
                 >
                   Edit
                 </button>
@@ -172,7 +172,7 @@ const Chat: React.FC<ChatProps> = ({ threadId }) => {
             </div>
           </div>
           <div className="flex gap-2">
-            <button type="submit" className="btn btn-primary flex-grow" disabled={isStreaming}>
+            <button type="submit" className="btn btn-primary flex-grow" disabled={isLoading}>
               {editingIndex !== null ? 'Update' : 'Send'}
             </button>
             {editingIndex !== null && (

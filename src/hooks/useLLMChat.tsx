@@ -20,7 +20,6 @@ export const useLLMChat = (threadId: string) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<ChatError | null>(null);
-  const [isStreaming, setIsStreaming] = useState<boolean>(false);
 
   useEffect(() => {
     if (threadId) {
@@ -84,7 +83,6 @@ export const useLLMChat = (threadId: string) => {
       if (!reader) throw new Error('Failed to get response reader');
 
       let assistantResponse = '';
-      setIsStreaming(true);
 
       while (true) {
         const { done, value } = await reader.read();
@@ -106,8 +104,6 @@ export const useLLMChat = (threadId: string) => {
           return newMessages;
         });
       }
-
-      setIsStreaming(false);
 
       // Save the assistant's message to the thread
       const assistantFormData = new FormData();
@@ -167,7 +163,6 @@ export const useLLMChat = (threadId: string) => {
     sendMessage,
     editMessage,
     isLoading,
-    isStreaming,
     error,
   };
 };
