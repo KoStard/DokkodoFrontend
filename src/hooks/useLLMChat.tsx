@@ -10,6 +10,7 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   media_files?: MediaFile[];
+  visible: boolean;
 }
 
 interface ChatError {
@@ -45,7 +46,6 @@ export const useLLMChat = (threadId: string) => {
   }, [fetchMessages, threadId]);
 
   const callChat = useCallback(async () => {
-    // Start streaming the assistant's response
     console.log(messages);
     const response = await fetch('http://localhost:8000/api/chat', {
       method: 'POST',
@@ -76,13 +76,13 @@ export const useLLMChat = (threadId: string) => {
             id: assistantMessageId,
             role: 'assistant',
             content: assistantResponse,
+            visible: true,
           });
         }
         return newMessages;
       });
     }
 
-    // Save the assistant's message to the thread
     const assistantFormData = new FormData();
     assistantFormData.append('content', assistantResponse);
     assistantFormData.append('role', 'assistant');
@@ -98,7 +98,6 @@ export const useLLMChat = (threadId: string) => {
     setIsLoading(true);
     setError(null);
     try {
-      // Send user message to the backend
       const message = await (await fetch(`http://localhost:8000/api/threads/${threadId}/messages`, {
         method: 'POST',
         body: formData,
@@ -152,10 +151,39 @@ export const useLLMChat = (threadId: string) => {
     }
   }, [callChat, threadId]);
 
+  const startJourney = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`http://localhost:8000/api/threads/${threadId}`);
+      if (!response.ok) throw new Error('Failed to fetch thread');
+      const threadData = await response.json();
+      
+      const invisibleMessage = threadData.messages.find((msg: Message) => !msg.visible);
+      if (invisibleMessage) {
+        const visibleMessage: Message = { ...invisibleMessage, visible: true };
+        setMessages([visibleMessage]);
+        
+        await fetch(`http://localhost:8000/api/threads/${threadId}/messages/${invisibleMessage.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ visible: true }),
+        });
+
+        await callChat();
+      }
+    } catch (err) {
+      setError({ message: (err as Error).message });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [threadId, callChat]);
+
   return {
     messages,
     sendMessage,
     editMessage,
+    startJourney,
     isLoading,
     error,
   };

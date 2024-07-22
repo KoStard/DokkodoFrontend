@@ -9,12 +9,20 @@ interface Thread {
   name: string;
 }
 
+interface Journey {
+  id: string;
+  name: string;
+  description: string;
+}
+
 export default function App() {
   const [threads, setThreads] = useState<Thread[]>([]);
+  const [journeys, setJourneys] = useState<Journey[]>([]);
   const [currentThreadId, setCurrentThreadId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchThreads();
+    fetchJourneys();
     const hashThreadId = window.location.hash.slice(1);
     if (hashThreadId) {
       setCurrentThreadId(hashThreadId);
@@ -31,12 +39,22 @@ export default function App() {
     }
   };
 
-  const createThread = async (name: string) => {
+  const fetchJourneys = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/api/journeys');
+      const data: Journey[] = await response.json();
+      setJourneys(data);
+    } catch (error) {
+      console.error('Failed to fetch journeys:', error);
+    }
+  };
+
+  const createThread = async (name: string, journeyId: string) => {
     try {
       const response = await fetch('http://localhost:8000/api/threads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, journey_id: journeyId }),
       });
       const data: Thread = await response.json();
       setThreads([...threads, data]);
@@ -90,6 +108,7 @@ export default function App() {
     <div className="flex h-screen">
       <ThreadList
         threads={threads}
+        journeys={journeys}
         currentThreadId={currentThreadId}
         onSelectThread={setCurrentThreadIdAndUpdateHash}
         onCreateThread={createThread}

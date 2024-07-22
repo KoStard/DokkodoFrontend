@@ -15,12 +15,13 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   media_files?: MediaFile[];
+  visible: boolean;
 }
 
 const Chat: React.FC<ChatProps> = ({ threadId }) => {
+  const { messages, sendMessage, editMessage, startJourney, isLoading, error } = useLLMChat(threadId);
   const [input, setInput] = useState<string>('');
   const [files, setFiles] = useState<File[]>([]);
-  const { messages, sendMessage, editMessage, isLoading, error } = useLLMChat(threadId);
   const [editingIndex, setEditingIndex] = useState<string | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -83,15 +84,22 @@ const Chat: React.FC<ChatProps> = ({ threadId }) => {
     setFiles(files.filter((_, i) => i !== index));
   };
 
+  const handleStartJourney = async () => {
+    await startJourney();
+  };
+
+  const visibleMessages = messages.filter(message => message.visible);
+  const hasInvisibleMessage = messages.some(message => !message.visible);
+
   return (
     <div className="flex flex-col h-screen flex-grow">
       <div className="flex-grow overflow-y-auto p-4" ref={chatContainerRef}>
-        {messages.map((message: Message) => (
+        {visibleMessages.map((message: Message) => (
           <div key={message.id} className={`chat ${message.role === 'user' ? 'chat-end' : 'chat-start'}`}>
             <div className="chat-bubble">
               <span className="font-bold">{message.role}: </span>
               <span>{message.content}</span>
-              {isLoading && message.id === messages[messages.length - 1].id && (
+              {isLoading && message.id === visibleMessages[visibleMessages.length - 1].id && (
                 <span className="animate-pulse">▮</span>
               )}
               {message.media_files && message.media_files.length > 0 && (
@@ -125,71 +133,81 @@ const Chat: React.FC<ChatProps> = ({ threadId }) => {
         {error && <div className="alert alert-error mt-4">Error: {error.message}</div>}
       </div>
       <div className="p-4">
-        <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-          <div
-            className="border-2 border-dashed border-gray-300 p-4 rounded-lg"
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={handleFileDrop}
+        {hasInvisibleMessage && visibleMessages.length === 0 ? (
+          <button
+            onClick={handleStartJourney}
+            className="btn btn-primary w-full"
+            disabled={isLoading}
           >
-            <input
-              ref={inputRef}
-              className="input input-bordered w-full"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder={editingIndex !== null ? "Edit your message..." : "Type your message here..."}
-            />
-            <div className="mt-2">
+            Start Journey
+          </button>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+            <div
+              className="border-2 border-dashed border-gray-300 p-4 rounded-lg"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={handleFileDrop}
+            >
               <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                multiple
-                className="hidden"
+                ref={inputRef}
+                className="input input-bordered w-full"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder={editingIndex !== null ? "Edit your message..." : "Type your message here..."}
               />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="btn btn-secondary btn-sm"
-              >
-                Attach Files
+              <div className="mt-2">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  multiple
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="btn btn-secondary btn-sm"
+                >
+                  Attach Files
+                </button>
+                {files.length > 0 && (
+                  <div className="mt-2">
+                    {files.map((file, index) => (
+                      <div key={index} className="flex items-center mt-1">
+                        <span>{file.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeFile(index)}
+                          className="btn btn-xs btn-ghost ml-2"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button type="submit" className="btn btn-primary flex-grow" disabled={isLoading}>
+                {editingIndex !== null ? 'Update' : 'Send'}
               </button>
-              {files.length > 0 && (
-                <div className="mt-2">
-                  {files.map((file, index) => (
-                    <div key={index} className="flex items-center mt-1">
-                      <span>{file.name}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeFile(index)}
-                        className="btn btn-xs btn-ghost ml-2"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                </div>
+              {editingIndex !== null && (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setEditingIndex(null);
+                    setInput('');
+                    setFiles([]);
+                  }}
+                >
+                  Cancel
+                </button>
               )}
             </div>
-          </div>
-          <div className="flex gap-2">
-            <button type="submit" className="btn btn-primary flex-grow" disabled={isLoading}>
-              {editingIndex !== null ? 'Update' : 'Send'}
-            </button>
-            {editingIndex !== null && (
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => {
-                  setEditingIndex(null);
-                  setInput('');
-                  setFiles([]);
-                }}
-              >
-                Cancel
-              </button>
-            )}
-          </div>
-        </form>
+          </form>
+        )}
       </div>
     </div>
   );

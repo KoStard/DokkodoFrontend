@@ -5,17 +5,25 @@ interface Thread {
   name: string;
 }
 
+interface Journey {
+  id: string;
+  name: string;
+  description: string;
+}
+
 interface ThreadListProps {
   threads: Thread[];
+  journeys: Journey[];
   currentThreadId: string | null;
   onSelectThread: (id: string) => void;
-  onCreateThread: (name: string) => void;
+  onCreateThread: (name: string, journeyId: string) => void;
   onDeleteThread: (id: string) => void;
   onRenameThread: (id: string, newName: string) => void;
 }
 
 const ThreadList: React.FC<ThreadListProps> = ({ 
   threads, 
+  journeys,
   currentThreadId, 
   onSelectThread, 
   onCreateThread, 
@@ -23,14 +31,16 @@ const ThreadList: React.FC<ThreadListProps> = ({
   onRenameThread 
 }) => {
   const [newThreadName, setNewThreadName] = useState<string>('');
+  const [selectedJourneyId, setSelectedJourneyId] = useState<string>('');
   const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
   const [editingThreadName, setEditingThreadName] = useState<string>('');
 
   const handleCreateThread = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newThreadName.trim()) {
-      onCreateThread(newThreadName);
+    if (newThreadName.trim() && selectedJourneyId) {
+      onCreateThread(newThreadName, selectedJourneyId);
       setNewThreadName('');
+      setSelectedJourneyId('');
     }
   };
 
@@ -51,9 +61,19 @@ const ThreadList: React.FC<ThreadListProps> = ({
           value={newThreadName}
           onChange={(e) => setNewThreadName(e.target.value)}
           placeholder="New thread name"
-          className="input input-bordered w-full"
+          className="input input-bordered w-full mb-2"
         />
-        <button type="submit" className="btn btn-primary mt-2 w-full">Create Thread</button>
+        <select
+          value={selectedJourneyId}
+          onChange={(e) => setSelectedJourneyId(e.target.value)}
+          className="select select-bordered w-full mb-2"
+        >
+          <option value="">Select a Journey</option>
+          {journeys.map((journey) => (
+            <option key={journey.id} value={journey.id}>{journey.name}</option>
+          ))}
+        </select>
+        <button type="submit" className="btn btn-primary w-full">Create Thread</button>
       </form>
       <ul>
         {threads.map((thread) => (
