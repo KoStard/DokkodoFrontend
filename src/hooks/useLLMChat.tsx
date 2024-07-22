@@ -21,14 +21,6 @@ export const useLLMChat = (threadId: string) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<ChatError | null>(null);
 
-  useEffect(() => {
-    if (threadId) {
-      fetchMessages();
-    } else {
-      setMessages([]);
-    }
-  }, [threadId]);
-
   const fetchMessages = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -44,8 +36,17 @@ export const useLLMChat = (threadId: string) => {
     }
   }, [threadId]);
 
+  useEffect(() => {
+    if (threadId) {
+      fetchMessages();
+    } else {
+      setMessages([]);
+    }
+  }, [fetchMessages, threadId]);
+
   const callChat = useCallback(async () => {
     // Start streaming the assistant's response
+    console.log(messages);
     const response = await fetch('http://localhost:8000/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -91,7 +92,7 @@ export const useLLMChat = (threadId: string) => {
       method: 'POST',
       body: assistantFormData,
     });
-  }, [threadId]);
+  }, [messages, threadId]);
 
   const sendMessage = useCallback(async (formData: FormData) => {
     setIsLoading(true);
@@ -111,7 +112,7 @@ export const useLLMChat = (threadId: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, [threadId]);
+  }, [callChat, threadId]);
 
   const editMessage = useCallback(async (messageId: string, formData: FormData) => {
     setIsLoading(true);
@@ -149,7 +150,7 @@ export const useLLMChat = (threadId: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, [threadId]);
+  }, [callChat, threadId]);
 
   return {
     messages,
