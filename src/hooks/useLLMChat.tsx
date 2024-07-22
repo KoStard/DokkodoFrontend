@@ -20,6 +20,7 @@ interface ChatError {
 export const useLLMChat = (threadId: string) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isStarted, setIsStarted] = useState<boolean>(false);
   const [error, setError] = useState<ChatError | null>(null);
 
   const fetchMessages = useCallback(async () => {
@@ -45,8 +46,7 @@ export const useLLMChat = (threadId: string) => {
     }
   }, [fetchMessages, threadId]);
 
-  const callChat = useCallback(async () => {
-    console.log(messages);
+  const callChat = useCallback(async (messages: Message[]) => {
     const response = await fetch('http://localhost:8000/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -63,7 +63,9 @@ export const useLLMChat = (threadId: string) => {
 
     while (true) {
       const { done, value } = await reader.read();
-      if (done) break;
+      if (done) {
+        break;
+      }
       const text = new TextDecoder().decode(value);
       assistantResponse += text;
       setMessages(prevMessages => {
@@ -92,7 +94,13 @@ export const useLLMChat = (threadId: string) => {
       method: 'POST',
       body: assistantFormData,
     });
-  }, [messages, threadId]);
+  }, [threadId]);
+
+  useEffect(() => {
+    if (messages.length > 0 && messages[messages.length - 1].role === 'user' && isStarted) {
+      callChat(messages);
+    }
+  }, [messages, callChat, isStarted]);
 
   const sendMessage = useCallback(async (formData: FormData) => {
     setIsLoading(true);
@@ -105,13 +113,12 @@ export const useLLMChat = (threadId: string) => {
 
       setMessages(prevMessages => [...prevMessages, message]);
 
-      await callChat();
     } catch (err) {
       setError({ message: (err as Error).message });
     } finally {
       setIsLoading(false);
     }
-  }, [callChat, threadId]);
+  }, [callChat, messages, threadId]);
 
   const editMessage = useCallback(async (messageId: string, formData: FormData) => {
     setIsLoading(true);
@@ -143,41 +150,18 @@ export const useLLMChat = (threadId: string) => {
         return newMessages;
       });
 
-      await callChat();
     } catch (err) {
       setError({ message: (err as Error).message });
     } finally {
       setIsLoading(false);
     }
-  }, [callChat, threadId]);
+  }, [callChat, messages, threadId]);
 
   const startJourney = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    try {
-      const response = await fetch(`http://localhost:8000/api/threads/${threadId}`);
-      if (!response.ok) throw new Error('Failed to fetch thread');
-      const threadData = await response.json();
-      
-      const invisibleMessage = threadData.messages.find((msg: Message) => !msg.visible);
-      if (invisibleMessage) {
-        const visibleMessage: Message = { ...invisibleMessage, visible: true };
-        setMessages([visibleMessage]);
-        
-        await fetch(`http://localhost:8000/api/threads/${threadId}/messages/${invisibleMessage.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ visible: true }),
-        });
-
-        await callChat();
-      }
-    } catch (err) {
-      setError({ message: (err as Error).message });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [threadId, callChat]);
+    setIsStarted(true);
+  }, [callChat, messages]);
 
   return {
     messages,
