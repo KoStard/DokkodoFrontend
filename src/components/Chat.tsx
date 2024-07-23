@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLLMChat } from '@/hooks/useLLMChat';
+import ReactMarkdown from 'react-markdown';
 
 interface ChatProps {
   threadId: string;
@@ -96,9 +97,10 @@ const Chat: React.FC<ChatProps> = ({ threadId }) => {
       <div className="flex-grow overflow-y-auto p-4" ref={chatContainerRef}>
         {visibleMessages.map((message: Message) => (
           <div key={message.id} className={`chat ${message.role === 'user' ? 'chat-end' : 'chat-start'}`}>
-            <div className="chat-bubble">
-              <span className="font-bold">{message.role}: </span>
-              <span>{message.content}</span>
+            <div className="chat-bubble chat-bubble-primary">
+              <ReactMarkdown className="prose max-w-none">
+                {message.content}
+              </ReactMarkdown>
               {isLoading && message.id === visibleMessages[visibleMessages.length - 1].id && (
                 <span className="animate-pulse">▮</span>
               )}

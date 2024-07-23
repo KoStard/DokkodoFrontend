@@ -30,6 +30,7 @@ export const useLLMChat = (threadId: string) => {
       const response = await fetch(`http://localhost:8000/api/threads/${threadId}`);
       if (!response.ok) throw new Error('Failed to fetch messages');
       const data = await response.json();
+      if (data.messages) setIsStarted(true);
       setMessages(data.messages);
     } catch (err) {
       setError({ message: (err as Error).message });
@@ -103,6 +104,7 @@ export const useLLMChat = (threadId: string) => {
   }, [messages, callChat, isStarted]);
 
   const sendMessage = useCallback(async (formData: FormData) => {
+    setIsStarted(true);
     setIsLoading(true);
     setError(null);
     try {
