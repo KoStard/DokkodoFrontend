@@ -19,13 +19,21 @@ interface Message {
   visible: boolean;
 }
 
-const Chat: React.FC<ChatProps> = ({ threadId }) => {
+const OrnamentalSeparator = () => (
+  <div className="my-4 flex items-center">
+    <div className="flex-grow border-t border-gray-300"></div>
+    <div className="mx-4 text-gray-500">✦</div>
+    <div className="flex-grow border-t border-gray-300"></div>
+  </div>
+);
+
+const MagicalDocumentChat: React.FC<ChatProps> = ({ threadId }) => {
   const { messages, sendMessage, editMessage, startJourney, isLoading, error } = useLLMChat(threadId);
   const [input, setInput] = useState<string>('');
   const [files, setFiles] = useState<File[]>([]);
   const [editingIndex, setEditingIndex] = useState<string | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -76,28 +84,20 @@ const Chat: React.FC<ChatProps> = ({ threadId }) => {
     }
   };
 
-  const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setFiles([...files, ...Array.from(e.dataTransfer.files)]);
-  };
-
   const removeFile = (index: number) => {
     setFiles(files.filter((_, i) => i !== index));
-  };
-
-  const handleStartJourney = async () => {
-    await startJourney();
   };
 
   const visibleMessages = messages.filter(message => message.visible);
   const hasInvisibleMessage = messages.some(message => !message.visible);
 
   return (
-    <div className="flex flex-col h-screen flex-grow">
-      <div className="flex-grow overflow-y-auto p-4" ref={chatContainerRef}>
-        {visibleMessages.map((message: Message) => (
-          <div key={message.id} className={`chat ${message.role === 'user' ? 'chat-end' : 'chat-start'}`}>
-            <div className="chat-bubble chat-bubble-primary">
+    <div className="flex flex-col h-screen max-w-3xl mx-auto p-6 bg-gradient-to-b from-white to-gray-50 w-full">
+      <div className="flex-grow overflow-y-auto" ref={chatContainerRef}>
+        {visibleMessages.map((message: Message, index: number) => (
+          <React.Fragment key={message.id}>
+            {index > 0 && <OrnamentalSeparator />}
+            <div className={`mb-4 ${message.role === 'user' ? 'text-blue-600' : 'text-purple-600'}`}>
               <ReactMarkdown className="prose max-w-none">
                 {message.content}
               </ReactMarkdown>
@@ -121,7 +121,7 @@ const Chat: React.FC<ChatProps> = ({ threadId }) => {
               )}
               {message.role === 'user' && (
                 <button
-                  className="btn btn-xs ml-2"
+                  className="text-xs text-gray-500 hover:text-gray-700 mt-2"
                   onClick={() => handleEdit(message.id)}
                   disabled={isLoading || editingIndex !== null}
                 >
@@ -129,75 +129,56 @@ const Chat: React.FC<ChatProps> = ({ threadId }) => {
                 </button>
               )}
             </div>
-          </div>
+          </React.Fragment>
         ))}
-        {isLoading && <div className="alert alert-info mt-4">Loading...</div>}
-        {error && <div className="alert alert-error mt-4">Error: {error.message}</div>}
+        {isLoading && <div className="text-gray-500 italic mt-4">Wisdom is pondering...</div>}
+        {error && <div className="text-red-500 mt-4">Error: {error.message}</div>}
       </div>
-      <div className="p-4">
+      <div className="mt-6">
         {hasInvisibleMessage && visibleMessages.length === 0 ? (
           <button
-            onClick={handleStartJourney}
-            className="btn btn-primary w-full"
+            onClick={startJourney}
+            className="w-full py-2 px-4 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
             disabled={isLoading}
           >
-            Start Journey
+            Begin Your Journey
           </button>
         ) : (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-            <div
-              className="border-2 border-dashed border-gray-300 p-4 rounded-lg"
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={handleFileDrop}
-            >
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <textarea
+              ref={inputRef}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={editingIndex !== null ? "Edit your thoughts..." : "Share your thoughts..."}
+              rows={3}
+            />
+            <div className="flex items-center space-x-4">
               <input
-                ref={inputRef}
-                className="input input-bordered w-full"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder={editingIndex !== null ? "Edit your message..." : "Type your message here..."}
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                multiple
+                className="hidden"
               />
-              <div className="mt-2">
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  multiple
-                  className="hidden"
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="btn btn-secondary btn-sm"
-                >
-                  Attach Files
-                </button>
-                {files.length > 0 && (
-                  <div className="mt-2">
-                    {files.map((file, index) => (
-                      <div key={index} className="flex items-center mt-1">
-                        <span>{file.name}</span>
-                        <button
-                          type="button"
-                          onClick={() => removeFile(index)}
-                          className="btn btn-xs btn-ghost ml-2"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button type="submit" className="btn btn-primary flex-grow" disabled={isLoading}>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="py-2 px-4 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
+              >
+                Attach Files
+              </button>
+              <button 
+                type="submit" 
+                className="py-2 px-4 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                disabled={isLoading}
+              >
                 {editingIndex !== null ? 'Update' : 'Send'}
               </button>
               {editingIndex !== null && (
                 <button
                   type="button"
-                  className="btn btn-secondary"
+                  className="py-2 px-4 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
                   onClick={() => {
                     setEditingIndex(null);
                     setInput('');
@@ -208,6 +189,22 @@ const Chat: React.FC<ChatProps> = ({ threadId }) => {
                 </button>
               )}
             </div>
+            {files.length > 0 && (
+              <div className="mt-2">
+                {files.map((file, index) => (
+                  <div key={index} className="flex items-center mt-1">
+                    <span className="text-sm text-gray-600">{file.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeFile(index)}
+                      className="ml-2 text-xs text-red-500 hover:text-red-700"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </form>
         )}
       </div>
@@ -215,4 +212,4 @@ const Chat: React.FC<ChatProps> = ({ threadId }) => {
   );
 };
 
-export default Chat;
+export default MagicalDocumentChat;
