@@ -21,9 +21,9 @@ interface Message {
 
 const OrnamentalSeparator = () => (
   <div className="my-4 flex items-center">
-    <div className="flex-grow border-t border-gray-300"></div>
-    <div className="mx-4 text-gray-500">✦</div>
-    <div className="flex-grow border-t border-gray-300"></div>
+    <div className="flex-grow border-t border-base-300"></div>
+    <div className="mx-4 text-base-300">✦</div>
+    <div className="flex-grow border-t border-base-300"></div>
   </div>
 );
 
@@ -48,8 +48,8 @@ const MagicalDocumentChat: React.FC<ChatProps> = ({ threadId }) => {
     }
   }, [isLoading]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     if ((input.trim() || files.length > 0) && !isLoading) {
       const formData = new FormData();
       formData.append('content', input);
@@ -65,6 +65,13 @@ const MagicalDocumentChat: React.FC<ChatProps> = ({ threadId }) => {
       } else {
         await sendMessage(formData);
       }
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      handleSubmit();
     }
   };
 
@@ -92,12 +99,12 @@ const MagicalDocumentChat: React.FC<ChatProps> = ({ threadId }) => {
   const hasInvisibleMessage = messages.some(message => !message.visible);
 
   return (
-    <div className="flex flex-col h-screen max-w-3xl mx-auto p-6 bg-gradient-to-b from-white to-gray-50 w-full">
+    <div className="flex flex-col h-screen w-full max-w-none mx-auto p-6 bg-gray-400 bg-opacity-10 from-base-100 to-base-200">
       <div className="flex-grow overflow-y-auto" ref={chatContainerRef}>
         {visibleMessages.map((message: Message, index: number) => (
           <React.Fragment key={message.id}>
             {index > 0 && <OrnamentalSeparator />}
-            <div className={`mb-4 ${message.role === 'user' ? 'text-blue-600' : 'text-purple-600'}`}>
+            <div className={`mb-4 ${message.role === 'user' ? 'text-primary' : 'text-secondary'}`}>
               <ReactMarkdown className="prose max-w-none">
                 {message.content}
               </ReactMarkdown>
@@ -113,7 +120,7 @@ const MagicalDocumentChat: React.FC<ChatProps> = ({ threadId }) => {
                       ) : file.content_type.startsWith('audio/') ? (
                         <audio controls src={`http://localhost:8000/api/media/${file.filename}`} />
                       ) : (
-                        <a href={`http://localhost:8000/api/media/${file.filename}`} target="_blank" rel="noopener noreferrer">{file.filename}</a>
+                        <a href={`http://localhost:8000/api/media/${file.filename}`} target="_blank" rel="noopener noreferrer" className="link link-accent">{file.filename}</a>
                       )}
                     </div>
                   ))}
@@ -121,7 +128,7 @@ const MagicalDocumentChat: React.FC<ChatProps> = ({ threadId }) => {
               )}
               {message.role === 'user' && (
                 <button
-                  className="text-xs text-gray-500 hover:text-gray-700 mt-2"
+                  className="text-xs text-base-content opacity-50 hover:opacity-100 mt-2"
                   onClick={() => handleEdit(message.id)}
                   disabled={isLoading || editingIndex !== null}
                 >
@@ -131,14 +138,14 @@ const MagicalDocumentChat: React.FC<ChatProps> = ({ threadId }) => {
             </div>
           </React.Fragment>
         ))}
-        {isLoading && <div className="text-gray-500 italic mt-4">Wisdom is pondering...</div>}
-        {error && <div className="text-red-500 mt-4">Error: {error.message}</div>}
+        {isLoading && <div className="text-base-content opacity-50 italic mt-4">Wisdom is pondering...</div>}
+        {error && <div className="text-error mt-4">Error: {error.message}</div>}
       </div>
       <div className="mt-6">
         {hasInvisibleMessage && visibleMessages.length === 0 ? (
           <button
             onClick={startJourney}
-            className="w-full py-2 px-4 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+            className="btn btn-primary w-full"
             disabled={isLoading}
           >
             Begin Your Journey
@@ -147,30 +154,31 @@ const MagicalDocumentChat: React.FC<ChatProps> = ({ threadId }) => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <textarea
               ref={inputRef}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              className="textarea textarea-bordered w-full focus:textarea-primary resize-none"
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
               placeholder={editingIndex !== null ? "Edit your thoughts..." : "Share your thoughts..."}
               rows={3}
             />
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              multiple
+              className="hidden"
+            />
             <div className="flex items-center space-x-4">
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                multiple
-                className="hidden"
-              />
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="py-2 px-4 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
+                className="btn btn-secondary btn-outline"
               >
                 Attach Files
               </button>
-              <button 
-                type="submit" 
-                className="py-2 px-4 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+              <button
+                type="submit"
+                className="btn btn-primary"
                 disabled={isLoading}
               >
                 {editingIndex !== null ? 'Update' : 'Send'}
@@ -178,7 +186,7 @@ const MagicalDocumentChat: React.FC<ChatProps> = ({ threadId }) => {
               {editingIndex !== null && (
                 <button
                   type="button"
-                  className="py-2 px-4 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
+                  className="btn btn-ghost"
                   onClick={() => {
                     setEditingIndex(null);
                     setInput('');
@@ -193,11 +201,11 @@ const MagicalDocumentChat: React.FC<ChatProps> = ({ threadId }) => {
               <div className="mt-2">
                 {files.map((file, index) => (
                   <div key={index} className="flex items-center mt-1">
-                    <span className="text-sm text-gray-600">{file.name}</span>
+                    <span className="text-sm text-base-content opacity-70">{file.name}</span>
                     <button
                       type="button"
                       onClick={() => removeFile(index)}
-                      className="ml-2 text-xs text-red-500 hover:text-red-700"
+                      className="ml-2 text-xs text-error hover:text-error-content"
                     >
                       Remove
                     </button>

@@ -53,7 +53,7 @@ const ThreadList: React.FC<ThreadListProps> = ({
   };
 
   return (
-    <div className="w-64 min-w-[16rem] p-4 overflow-y-auto">
+    <div className="w-64 min-w-[16rem] h-full p-4 overflow-y-auto bg-base-200 shadow-lg">
       <h2 className="text-xl font-bold mb-4">Threads</h2>
       <form onSubmit={handleCreateThread} className="mb-4">
         <input

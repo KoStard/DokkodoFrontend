@@ -19,6 +19,7 @@ export default function App() {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [journeys, setJourneys] = useState<Journey[]>([]);
   const [currentThreadId, setCurrentThreadId] = useState<string | null>(null);
+  const [isThreadListVisible, setIsThreadListVisible] = useState(true);
 
   useEffect(() => {
     fetchThreads();
@@ -26,8 +27,23 @@ export default function App() {
     const hashThreadId = window.location.hash.slice(1);
     if (hashThreadId) {
       setCurrentThreadId(hashThreadId);
+      setIsThreadListVisible(false);
     }
-  }, []);
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (e.clientX <= 20) {
+        setIsThreadListVisible(true);
+      } else if (e.clientX > 300 && currentThreadId) {
+        setIsThreadListVisible(false);
+      }
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [currentThreadId]);
 
   const fetchThreads = async () => {
     try {
@@ -99,29 +115,39 @@ export default function App() {
     setCurrentThreadId(id);
     if (id) {
       window.location.hash = id;
+      setIsThreadListVisible(false);
     } else {
       window.location.hash = '';
+      setIsThreadListVisible(true);
     }
   };
 
   return (
-    <div className="flex h-screen">
-      <ThreadList
-        threads={threads}
-        journeys={journeys}
-        currentThreadId={currentThreadId}
-        onSelectThread={setCurrentThreadIdAndUpdateHash}
-        onCreateThread={createThread}
-        onDeleteThread={deleteThread}
-        onRenameThread={renameThread}
-      />
-      {currentThreadId ? (
-        <Chat threadId={currentThreadId} />
-      ) : (
-        <div className="flex-grow flex items-center justify-center">
-          <p className="text-xl text-gray-500">Select a thread or create a new one to start chatting</p>
-        </div>
-      )}
+    <div className="flex h-screen relative">
+      <div
+        className={`absolute top-0 left-0 h-full transition-transform duration-300 ease-in-out z-10 ${
+          isThreadListVisible ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <ThreadList
+          threads={threads}
+          journeys={journeys}
+          currentThreadId={currentThreadId}
+          onSelectThread={setCurrentThreadIdAndUpdateHash}
+          onCreateThread={createThread}
+          onDeleteThread={deleteThread}
+          onRenameThread={renameThread}
+        />
+      </div>
+      <div className="flex-grow">
+        {currentThreadId ? (
+          <Chat threadId={currentThreadId} />
+        ) : (
+          <div className="flex-grow flex items-center justify-center">
+            <p className="text-xl text-gray-500">Select a thread or create a new one to start chatting</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
