@@ -105,7 +105,7 @@ const MagicalDocumentChat: React.FC<ChatProps> = ({ threadId }) => {
           <React.Fragment key={message.id}>
             {index > 0 && <OrnamentalSeparator />}
             <div className={`mb-4 ${message.role === 'user' ? 'text-primary' : 'text-secondary'}`}>
-              <ReactMarkdown className="prose max-w-none">
+              <ReactMarkdown className="prose max-w-none [&>p]:mb-4">
                 {message.content}
               </ReactMarkdown>
               {isLoading && message.id === visibleMessages[visibleMessages.length - 1].id && (
