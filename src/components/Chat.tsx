@@ -1,33 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLLMChat } from '@/hooks/useLLMChat';
 import ReactMarkdown from 'react-markdown';
+import { Message, MediaFile } from '@/types';
 
 interface ChatProps {
   threadId: string;
 }
 
-interface MediaFile {
-  filename: string;
-  content_type: string;
-}
-
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  media_files?: MediaFile[];
-  visible: boolean;
-}
-
-const OrnamentalSeparator = () => (
-  <div className="my-4 flex items-center">
-    <div className="flex-grow border-t border-base-300"></div>
-    <div className="mx-4 text-base-300">✦</div>
-    <div className="flex-grow border-t border-base-300"></div>
-  </div>
-);
-
-const MagicalDocumentChat: React.FC<ChatProps> = ({ threadId }) => {
+export const Chat: React.FC<ChatProps> = ({ threadId }) => {
   const { messages, sendMessage, editMessage, startJourney, isLoading, error } = useLLMChat(threadId);
   const [input, setInput] = useState<string>('');
   const [files, setFiles] = useState<File[]>([]);
@@ -100,124 +80,200 @@ const MagicalDocumentChat: React.FC<ChatProps> = ({ threadId }) => {
 
   return (
     <div className="flex flex-col h-screen w-full max-w-none mx-auto p-6 bg-gray-400 bg-opacity-10 from-base-100 to-base-200">
-      <div className="flex-grow overflow-y-auto" ref={chatContainerRef}>
-        {visibleMessages.map((message: Message, index: number) => (
-          <React.Fragment key={message.id}>
-            {index > 0 && <OrnamentalSeparator />}
-            <div className={`mb-4 ${message.role === 'user' ? 'text-primary' : 'text-secondary'}`}>
-              <ReactMarkdown className="prose max-w-none [&>p]:mb-4">
-                {message.content}
-              </ReactMarkdown>
-              {isLoading && message.id === visibleMessages[visibleMessages.length - 1].id && (
-                <span className="animate-pulse">▮</span>
-              )}
-              {message.media_files && message.media_files.length > 0 && (
-                <div className="mt-2">
-                  {message.media_files.map((file, fileIndex) => (
-                    <div key={fileIndex} className="mt-1">
-                      {file.content_type.startsWith('image/') ? (
-                        <img src={`http://localhost:8000/api/media/${file.filename}`} alt={file.filename} className="max-w-xs" />
-                      ) : file.content_type.startsWith('audio/') ? (
-                        <audio controls src={`http://localhost:8000/api/media/${file.filename}`} />
-                      ) : (
-                        <a href={`http://localhost:8000/api/media/${file.filename}`} target="_blank" rel="noopener noreferrer" className="link link-accent">{file.filename}</a>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-              {message.role === 'user' && (
-                <button
-                  className="text-xs text-base-content opacity-50 hover:opacity-100 mt-2"
-                  onClick={() => handleEdit(message.id)}
-                  disabled={isLoading || editingIndex !== null}
-                >
-                  Edit
-                </button>
-              )}
-            </div>
-          </React.Fragment>
-        ))}
-        {isLoading && <div className="text-base-content opacity-50 italic mt-4">Wisdom is pondering...</div>}
-        {error && <div className="text-error mt-4">Error: {error.message}</div>}
-      </div>
-      <div className="mt-6">
-        {hasInvisibleMessage && visibleMessages.length === 0 ? (
-          <button
-            onClick={startJourney}
-            className="btn btn-primary w-full"
-            disabled={isLoading}
-          >
-            Begin Your Journey
-          </button>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <textarea
-              ref={inputRef}
-              className="textarea textarea-bordered w-full focus:textarea-primary resize-none"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={editingIndex !== null ? "Edit your thoughts..." : "Share your thoughts..."}
-              rows={3}
-            />
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              multiple
-              className="hidden"
-            />
-            <div className="flex items-center space-x-4">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="btn btn-secondary btn-outline"
-              >
-                Attach Files
-              </button>
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={isLoading}
-              >
-                {editingIndex !== null ? 'Update' : 'Send'}
-              </button>
-              {editingIndex !== null && (
-                <button
-                  type="button"
-                  className="btn btn-ghost"
-                  onClick={() => {
-                    setEditingIndex(null);
-                    setInput('');
-                    setFiles([]);
-                  }}
-                >
-                  Cancel
-                </button>
-              )}
-            </div>
-            {files.length > 0 && (
-              <div className="mt-2">
-                {files.map((file, index) => (
-                  <div key={index} className="flex items-center mt-1">
-                    <span className="text-sm text-base-content opacity-70">{file.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeFile(index)}
-                      className="ml-2 text-xs text-error hover:text-error-content"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </form>
-        )}
-      </div>
+      <ChatMessages
+        messages={visibleMessages}
+        isLoading={isLoading}
+        error={error}
+        onEditMessage={handleEdit}
+        chatContainerRef={chatContainerRef}
+      />
+      <ChatInput
+        input={input}
+        setInput={setInput}
+        files={files}
+        isLoading={isLoading}
+        editingIndex={editingIndex}
+        hasInvisibleMessage={hasInvisibleMessage}
+        visibleMessagesCount={visibleMessages.length}
+        onSubmit={handleSubmit}
+        onKeyDown={handleKeyDown}
+        onFileChange={handleFileChange}
+        onRemoveFile={removeFile}
+        onStartJourney={startJourney}
+        inputRef={inputRef}
+        fileInputRef={fileInputRef}
+      />
     </div>
   );
 };
 
-export default MagicalDocumentChat;
+const ChatMessages = ({ messages, isLoading, error, onEditMessage, chatContainerRef }) => (
+  <div className="flex-grow overflow-y-auto" ref={chatContainerRef}>
+    {messages.map((message: Message, index: number) => (
+      <React.Fragment key={message.id}>
+        {index > 0 && <OrnamentalSeparator />}
+        <MessageItem
+          message={message}
+          isLoading={isLoading}
+          isLastMessage={index === messages.length - 1}
+          onEditMessage={onEditMessage}
+        />
+      </React.Fragment>
+    ))}
+    {isLoading && <div className="text-base-content opacity-50 italic mt-4">Wisdom is pondering...</div>}
+    {error && <div className="text-error mt-4">Error: {error.message}</div>}
+  </div>
+);
+
+const MessageItem = ({ message, isLoading, isLastMessage, onEditMessage }) => (
+  <div className={`mb-4 ${message.role === 'user' ? 'text-primary' : 'text-secondary'}`}>
+    <ReactMarkdown className="prose max-w-none [&>p]:mb-4">
+      {message.content}
+    </ReactMarkdown>
+    {isLoading && isLastMessage && <span className="animate-pulse">▮</span>}
+    <MediaFiles mediaFiles={message.media_files} />
+    {message.role === 'user' && (
+      <button
+        className="text-xs text-base-content opacity-50 hover:opacity-100 mt-2"
+        onClick={() => onEditMessage(message.id)}
+      >
+        Edit
+      </button>
+    )}
+  </div>
+);
+
+const MediaFiles = ({ mediaFiles }) => (
+  mediaFiles && mediaFiles.length > 0 && (
+    <div className="mt-2">
+      {mediaFiles.map((file: MediaFile, fileIndex: number) => (
+        <MediaFileItem key={fileIndex} file={file} />
+      ))}
+    </div>
+  )
+);
+
+const MediaFileItem = ({ file }) => {
+  const fileUrl = `http://localhost:8000/api/media/${file.filename}`;
+  
+  if (file.content_type.startsWith('image/')) {
+    return <img src={fileUrl} alt={file.filename} className="max-w-xs" />;
+  } else if (file.content_type.startsWith('audio/')) {
+    return <audio controls src={fileUrl} />;
+  } else {
+    return <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="link link-accent">{file.filename}</a>;
+  }
+};
+
+const ChatInput = ({
+  input,
+  setInput,
+  files,
+  isLoading,
+  editingIndex,
+  hasInvisibleMessage,
+  visibleMessagesCount,
+  onSubmit,
+  onKeyDown,
+  onFileChange,
+  onRemoveFile,
+  onStartJourney,
+  inputRef,
+  fileInputRef
+}) => (
+  <div className="mt-6">
+    {hasInvisibleMessage && visibleMessagesCount === 0 ? (
+      <button
+        onClick={onStartJourney}
+        className="btn btn-primary w-full"
+        disabled={isLoading}
+      >
+        Begin Your Journey
+      </button>
+    ) : (
+      <form onSubmit={onSubmit} className="space-y-4">
+        <textarea
+          ref={inputRef}
+          className="textarea textarea-bordered w-full focus:textarea-primary resize-none"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={onKeyDown}
+          placeholder={editingIndex !== null ? "Edit your thoughts..." : "Share your thoughts..."}
+          rows={3}
+        />
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={onFileChange}
+          multiple
+          className="hidden"
+        />
+        <ChatInputButtons
+          onAttachFiles={() => fileInputRef.current?.click()}
+          isLoading={isLoading}
+          editingIndex={editingIndex}
+          onCancelEdit={() => {
+            setInput('');
+            setEditingIndex(null);
+          }}
+        />
+        <AttachedFiles files={files} onRemoveFile={onRemoveFile} />
+      </form>
+    )}
+  </div>
+);
+
+const ChatInputButtons = ({ onAttachFiles, isLoading, editingIndex, onCancelEdit }) => (
+  <div className="flex items-center space-x-4">
+    <button
+      type="button"
+      onClick={onAttachFiles}
+      className="btn btn-secondary btn-outline"
+    >
+      Attach Files
+    </button>
+    <button
+      type="submit"
+      className="btn btn-primary"
+      disabled={isLoading}
+    >
+      {editingIndex !== null ? 'Update' : 'Send'}
+    </button>
+    {editingIndex !== null && (
+      <button
+        type="button"
+        className="btn btn-ghost"
+        onClick={onCancelEdit}
+      >
+        Cancel
+      </button>
+    )}
+  </div>
+);
+
+const AttachedFiles = ({ files, onRemoveFile }) => (
+  files.length > 0 && (
+    <div className="mt-2">
+      {files.map((file, index) => (
+        <div key={index} className="flex items-center mt-1">
+          <span className="text-sm text-base-content opacity-70">{file.name}</span>
+          <button
+            type="button"
+            onClick={() => onRemoveFile(index)}
+            className="ml-2 text-xs text-error hover:text-error-content"
+          >
+            Remove
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+);
+
+const OrnamentalSeparator = () => (
+  <div className="my-4 flex items-center">
+    <div className="flex-grow border-t border-base-300"></div>
+    <div className="mx-4 text-base-300">✦</div>
+    <div className="flex-grow border-t border-base-300"></div>
+  </div>
+);

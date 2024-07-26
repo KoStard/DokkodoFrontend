@@ -1,21 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-
-interface MediaFile {
-  filename: string;
-  content_type: string;
-}
-
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  media_files?: MediaFile[];
-  visible: boolean;
-}
-
-interface ChatError {
-  message: string;
-}
+import { Message, ChatError } from '@/types';
 
 export const useLLMChat = (threadId: string) => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -64,44 +48,44 @@ export const useLLMChat = (threadId: string) => {
 
     while (true) {
       const { done, value } = await reader.read();
-      if (done) {
-        break;
-      }
+      if (done) break;
       const text = new TextDecoder().decode(value);
       assistantResponse += text;
-      setMessages(prevMessages => {
-        const newMessages = [...prevMessages];
-        const lastMessage = newMessages[newMessages.length - 1];
-        if (lastMessage.role === 'assistant') {
-          lastMessage.content = assistantResponse;
-        } else {
-          newMessages.push({
-            id: assistantMessageId,
-            role: 'assistant',
-            content: assistantResponse,
-            visible: true,
-          });
-        }
-        return newMessages;
-      });
+      updateAssistantMessage(assistantResponse, assistantMessageId);
     }
 
+    await saveAssistantMessage(assistantResponse, assistantMessageId);
+  }, [threadId]);
+
+  const updateAssistantMessage = (content: string, messageId: string) => {
+    setMessages(prevMessages => {
+      const newMessages = [...prevMessages];
+      const lastMessage = newMessages[newMessages.length - 1];
+      if (lastMessage.role === 'assistant') {
+        lastMessage.content = content;
+      } else {
+        newMessages.push({
+          id: messageId,
+          role: 'assistant',
+          content: content,
+          visible: true,
+        });
+      }
+      return newMessages;
+    });
+  };
+
+  const saveAssistantMessage = async (content: string, messageId: string) => {
     const assistantFormData = new FormData();
-    assistantFormData.append('content', assistantResponse);
+    assistantFormData.append('content', content);
     assistantFormData.append('role', 'assistant');
-    assistantFormData.append('message_id', assistantMessageId);
+    assistantFormData.append('message_id', messageId);
 
     await fetch(`http://localhost:8000/api/threads/${threadId}/messages`, {
       method: 'POST',
       body: assistantFormData,
     });
-  }, [threadId]);
-
-  useEffect(() => {
-    if (messages.length > 0 && messages[messages.length - 1].role === 'user' && isStarted) {
-      callChat(messages);
-    }
-  }, [messages, callChat, isStarted]);
+  };
 
   const sendMessage = useCallback(async (formData: FormData) => {
     setIsStarted(true);
@@ -114,13 +98,12 @@ export const useLLMChat = (threadId: string) => {
       })).json();
 
       setMessages(prevMessages => [...prevMessages, message]);
-
     } catch (err) {
       setError({ message: (err as Error).message });
     } finally {
       setIsLoading(false);
     }
-  }, [callChat, messages, threadId]);
+  }, [threadId]);
 
   const editMessage = useCallback(async (messageId: string, formData: FormData) => {
     setIsLoading(true);
@@ -157,13 +140,15 @@ export const useLLMChat = (threadId: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, [callChat, messages, threadId]);
+  }, [threadId]);
 
   const startJourney = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     setIsStarted(true);
-  }, [callChat, messages]);
+    // Additional logic for starting a journey can be added here
+    setIsLoading(false);
+  }, []);
 
   return {
     messages,
