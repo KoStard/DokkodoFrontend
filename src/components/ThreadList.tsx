@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Thread, Journey } from '@/types';
+import { Journey, Thread } from '@/types';
+import React, { FormEvent, useState } from 'react';
 
 interface ThreadListProps {
   threads: Thread[];
@@ -68,8 +68,17 @@ export const ThreadList: React.FC<ThreadListProps> = ({
   );
 };
 
-const NewThreadForm = ({ newThreadName, setNewThreadName, selectedJourneyId, setSelectedJourneyId, journeys, onCreateThread }) => (
-  <form onSubmit={onCreateThread} className="mb-4">
+interface NewThreadFormProps {
+  newThreadName: string;
+  setNewThreadName: (value: string) => void;
+  selectedJourneyId: string;
+  setSelectedJourneyId: (value: string) => void;
+  journeys: Journey[];
+  onCreateThread: (e: FormEvent) => void;
+}
+
+const NewThreadForm: React.FC<NewThreadFormProps> = ({ newThreadName, setNewThreadName, selectedJourneyId, setSelectedJourneyId, journeys, onCreateThread }) => {
+  return <form onSubmit={onCreateThread} className="mb-4">
     <input
       type="text"
       value={newThreadName}
@@ -89,10 +98,22 @@ const NewThreadForm = ({ newThreadName, setNewThreadName, selectedJourneyId, set
     </select>
     <button type="submit" className="btn btn-primary w-full">Create Thread</button>
   </form>
-);
+};
 
-const ThreadListItems = ({ threads, currentThreadId, editingThreadId, editingThreadName, setEditingThreadId, setEditingThreadName, onSelectThread, onRenameThread, onDeleteThread }) => (
-  <ul>
+interface ThreadListItemsProps {
+  threads: Thread[];
+  currentThreadId: string | null;
+  editingThreadId: string | null;
+  editingThreadName: string;
+  setEditingThreadId: (id: string | null) => void;
+  setEditingThreadName: (name: string) => void;
+  onSelectThread: (id: string) => void;
+  onRenameThread: (e: FormEvent) => void;
+  onDeleteThread: (id: string) => void;
+}
+
+const ThreadListItems: React.FC<ThreadListItemsProps> = ({ threads, currentThreadId, editingThreadId, editingThreadName, setEditingThreadId, setEditingThreadName, onSelectThread, onRenameThread, onDeleteThread }) => {
+  return <ul>
     {threads.map((thread) => (
       <ThreadListItem
         key={thread.id}
@@ -108,10 +129,22 @@ const ThreadListItems = ({ threads, currentThreadId, editingThreadId, editingThr
       />
     ))}
   </ul>
-);
+};
 
-const ThreadListItem = ({ thread, isEditing, isSelected, editingThreadName, setEditingThreadName, onSelectThread, onRenameThread, onDeleteThread, setEditingThreadId }) => (
-  <li className="mb-2">
+interface ThreadListItemProps {
+  thread: Thread;
+  isEditing: boolean;
+  isSelected: boolean;
+  editingThreadName: string;
+  setEditingThreadName: (name: string) => void;
+  onSelectThread: (id: string) => void;
+  onRenameThread: (e: FormEvent) => void;
+  onDeleteThread: (id: string) => void;
+  setEditingThreadId: (id: string | null) => void;
+}
+
+const ThreadListItem: React.FC<ThreadListItemProps> = ({ thread, isEditing, isSelected, editingThreadName, setEditingThreadName, onSelectThread, onRenameThread, onDeleteThread, setEditingThreadId }) => {
+  return <li className="mb-2">
     {isEditing ? (
       <form onSubmit={onRenameThread} className="flex">
         <input
@@ -148,4 +181,4 @@ const ThreadListItem = ({ thread, isEditing, isSelected, editingThreadName, setE
       </div>
     )}
   </li>
-);
+};

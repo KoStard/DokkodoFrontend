@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
 import { useLLMChat } from '@/hooks/useLLMChat';
+import { ChatError, MediaFile, Message } from '@/types';
+import React, { ChangeEvent, FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Message, MediaFile } from '@/types';
 
 interface ChatProps {
   threadId: string;
@@ -93,6 +93,7 @@ export const Chat: React.FC<ChatProps> = ({ threadId }) => {
         files={files}
         isLoading={isLoading}
         editingIndex={editingIndex}
+        setEditingIndex={setEditingIndex}
         hasInvisibleMessage={hasInvisibleMessage}
         visibleMessagesCount={visibleMessages.length}
         onSubmit={handleSubmit}
@@ -107,7 +108,15 @@ export const Chat: React.FC<ChatProps> = ({ threadId }) => {
   );
 };
 
-const ChatMessages = ({ messages, isLoading, error, onEditMessage, chatContainerRef }) => (
+interface ChatMessagesProps {
+  messages: Message[];
+  isLoading: boolean;
+  error: ChatError | null;
+  onEditMessage: (messageId: string) => void;
+  chatContainerRef: React.RefObject<HTMLDivElement>;
+}
+
+const ChatMessages: React.FC<ChatMessagesProps> = ({ messages, isLoading, error, onEditMessage, chatContainerRef }) => (
   <div className="flex-grow overflow-y-auto" ref={chatContainerRef}>
     {messages.map((message: Message, index: number) => (
       <React.Fragment key={message.id}>
@@ -125,7 +134,15 @@ const ChatMessages = ({ messages, isLoading, error, onEditMessage, chatContainer
   </div>
 );
 
-const MessageItem = ({ message, isLoading, isLastMessage, onEditMessage }) => (
+interface MessageItemProps {
+  message: Message;
+  isLoading: boolean;
+  isLastMessage: boolean;
+  onEditMessage: (messageId: string) => void;
+}
+
+const MessageItem: React.FC<MessageItemProps> = ({ message, isLoading, isLastMessage, onEditMessage }) => (
+  // rest of the code remains the same
   <div className={`mb-4 ${message.role === 'user' ? 'text-primary' : 'text-secondary'}`}>
     <ReactMarkdown className="prose max-w-none [&>p]:mb-4">
       {message.content}
@@ -143,7 +160,11 @@ const MessageItem = ({ message, isLoading, isLastMessage, onEditMessage }) => (
   </div>
 );
 
-const MediaFiles = ({ mediaFiles }) => (
+interface MediaFilesProps {
+  mediaFiles?: MediaFile[];
+}
+
+const MediaFiles: React.FC<MediaFilesProps> = ({ mediaFiles }) => (
   mediaFiles && mediaFiles.length > 0 && (
     <div className="mt-2">
       {mediaFiles.map((file: MediaFile, fileIndex: number) => (
@@ -153,9 +174,13 @@ const MediaFiles = ({ mediaFiles }) => (
   )
 );
 
-const MediaFileItem = ({ file }) => {
+interface MediaFileItemProps {
+  file: MediaFile;
+}
+
+const MediaFileItem: React.FC<MediaFileItemProps> = ({ file }) => {
   const fileUrl = `http://localhost:8000/api/media/${file.filename}`;
-  
+
   if (file.content_type.startsWith('image/')) {
     return <img src={fileUrl} alt={file.filename} className="max-w-xs" />;
   } else if (file.content_type.startsWith('audio/')) {
@@ -165,12 +190,31 @@ const MediaFileItem = ({ file }) => {
   }
 };
 
-const ChatInput = ({
+interface ChatInputProps {
+  input: string;
+  setInput: (value: string) => void;
+  files: File[];
+  isLoading: boolean;
+  editingIndex: string | null;
+  setEditingIndex: (value: string | null) => void;
+  hasInvisibleMessage: boolean;
+  visibleMessagesCount: number;
+  onSubmit: (e?: FormEvent) => void;
+  onKeyDown: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
+  onFileChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  onRemoveFile: (index: number) => void;
+  onStartJourney: () => void;
+  inputRef: React.RefObject<HTMLTextAreaElement>;
+  fileInputRef: React.RefObject<HTMLInputElement>;
+}
+
+const ChatInput: React.FC<ChatInputProps> = ({
   input,
   setInput,
   files,
   isLoading,
   editingIndex,
+  setEditingIndex,
   hasInvisibleMessage,
   visibleMessagesCount,
   onSubmit,
@@ -180,8 +224,8 @@ const ChatInput = ({
   onStartJourney,
   inputRef,
   fileInputRef
-}) => (
-  <div className="mt-6">
+}) => {
+  return <div className="mt-6">
     {hasInvisibleMessage && visibleMessagesCount === 0 ? (
       <button
         onClick={onStartJourney}
@@ -221,10 +265,17 @@ const ChatInput = ({
       </form>
     )}
   </div>
-);
+};
 
-const ChatInputButtons = ({ onAttachFiles, isLoading, editingIndex, onCancelEdit }) => (
-  <div className="flex items-center space-x-4">
+interface ChatInputButtonsProps {
+  onAttachFiles: () => void;
+  isLoading: boolean;
+  editingIndex: string | null;
+  onCancelEdit: () => void;
+}
+
+const ChatInputButtons: React.FC<ChatInputButtonsProps> = ({ onAttachFiles, isLoading, editingIndex, onCancelEdit }) => {
+  return <div className="flex items-center space-x-4">
     <button
       type="button"
       onClick={onAttachFiles}
@@ -249,10 +300,16 @@ const ChatInputButtons = ({ onAttachFiles, isLoading, editingIndex, onCancelEdit
       </button>
     )}
   </div>
-);
+};
 
-const AttachedFiles = ({ files, onRemoveFile }) => (
-  files.length > 0 && (
+
+interface AttachedFilesProps {
+  files: File[];
+  onRemoveFile: (index: number) => void;
+}
+
+const AttachedFiles: React.FC<AttachedFilesProps> = ({ files, onRemoveFile }) => {
+  return files.length > 0 && (
     <div className="mt-2">
       {files.map((file, index) => (
         <div key={index} className="flex items-center mt-1">
@@ -267,8 +324,8 @@ const AttachedFiles = ({ files, onRemoveFile }) => (
         </div>
       ))}
     </div>
-  )
-);
+  );
+}
 
 const OrnamentalSeparator = () => (
   <div className="my-4 flex items-center">
