@@ -31,7 +31,37 @@ export const useLLMChat = (threadId: string) => {
     }
   }, [fetchMessages, threadId]);
 
-  const callChat = useCallback(async (messages: Message[]) => {
+  const saveAssistantMessage = async (content: string, messageId: string) => {
+    const assistantFormData = new FormData();
+    assistantFormData.append('content', content);
+    assistantFormData.append('role', 'assistant');
+    assistantFormData.append('message_id', messageId);
+
+    await fetch(`http://localhost:8000/api/threads/${threadId}/messages`, {
+      method: 'POST',
+      body: assistantFormData,
+    });
+  };
+
+  const updateAssistantMessage = useCallback((content: string, messageId: string) => {
+    setMessages(prevMessages => {
+      const newMessages = [...prevMessages];
+      const lastMessage = newMessages[newMessages.length - 1];
+      if (lastMessage.role === 'assistant') {
+        lastMessage.content = content;
+      } else {
+        newMessages.push({
+          id: messageId,
+          role: 'assistant',
+          content: content,
+          visible: true,
+        });
+      }
+      return newMessages;
+    });
+  }, []);
+
+  const callChat = async (messages: Message[]) => {
     const response = await fetch('http://localhost:8000/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -55,36 +85,6 @@ export const useLLMChat = (threadId: string) => {
     }
 
     await saveAssistantMessage(assistantResponse, assistantMessageId);
-  }, [threadId]);
-
-  const updateAssistantMessage = (content: string, messageId: string) => {
-    setMessages(prevMessages => {
-      const newMessages = [...prevMessages];
-      const lastMessage = newMessages[newMessages.length - 1];
-      if (lastMessage.role === 'assistant') {
-        lastMessage.content = content;
-      } else {
-        newMessages.push({
-          id: messageId,
-          role: 'assistant',
-          content: content,
-          visible: true,
-        });
-      }
-      return newMessages;
-    });
-  };
-
-  const saveAssistantMessage = async (content: string, messageId: string) => {
-    const assistantFormData = new FormData();
-    assistantFormData.append('content', content);
-    assistantFormData.append('role', 'assistant');
-    assistantFormData.append('message_id', messageId);
-
-    await fetch(`http://localhost:8000/api/threads/${threadId}/messages`, {
-      method: 'POST',
-      body: assistantFormData,
-    });
   };
 
   const sendMessage = useCallback(async (formData: FormData) => {
@@ -97,13 +97,16 @@ export const useLLMChat = (threadId: string) => {
         body: formData,
       })).json();
 
-      setMessages(prevMessages => [...prevMessages, message]);
+      const newMessages = [...messages, message];
+      setMessages([...newMessages]);
+      await callChat(newMessages);
     } catch (err) {
       setError({ message: (err as Error).message });
     } finally {
       setIsLoading(false);
     }
-  }, [threadId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, threadId]);
 
   const editMessage = useCallback(async (messageId: string, formData: FormData) => {
     setIsLoading(true);
@@ -118,7 +121,7 @@ export const useLLMChat = (threadId: string) => {
       const content = formData.get('content') as string;
       const files = formData.getAll('files') as File[];
 
-      setMessages(prevMessages => {
+      const newMessages = (prevMessages => {
         const newMessages = [...prevMessages];
         const messageIndex = newMessages.findIndex(msg => msg.id === messageId);
         if (messageIndex !== -1) {
@@ -133,14 +136,16 @@ export const useLLMChat = (threadId: string) => {
           return newMessages.slice(0, messageIndex + 1);
         }
         return newMessages;
-      });
+      })(messages);
 
+      setMessages(messages);
+      await callChat(messages);
     } catch (err) {
       setError({ message: (err as Error).message });
     } finally {
       setIsLoading(false);
     }
-  }, [threadId]);
+  }, [messages, threadId]);
 
   const startJourney = useCallback(async () => {
     setIsLoading(true);
