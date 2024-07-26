@@ -4,7 +4,6 @@ import { Message, ChatError } from '@/types';
 export const useLLMChat = (threadId: string) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isStarted, setIsStarted] = useState<boolean>(false);
   const [error, setError] = useState<ChatError | null>(null);
 
   const fetchMessages = useCallback(async () => {
@@ -14,7 +13,6 @@ export const useLLMChat = (threadId: string) => {
       const response = await fetch(`http://localhost:8000/api/threads/${threadId}`);
       if (!response.ok) throw new Error('Failed to fetch messages');
       const data = await response.json();
-      if (data.messages) setIsStarted(true);
       setMessages(data.messages);
     } catch (err) {
       setError({ message: (err as Error).message });
@@ -88,7 +86,6 @@ export const useLLMChat = (threadId: string) => {
   };
 
   const sendMessage = useCallback(async (formData: FormData) => {
-    setIsStarted(true);
     setIsLoading(true);
     setError(null);
     try {
@@ -138,8 +135,8 @@ export const useLLMChat = (threadId: string) => {
         return newMessages;
       })(messages);
 
-      setMessages(messages);
-      await callChat(messages);
+      setMessages(newMessages);
+      await callChat(newMessages);
     } catch (err) {
       setError({ message: (err as Error).message });
     } finally {
@@ -150,7 +147,6 @@ export const useLLMChat = (threadId: string) => {
   const startJourney = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    setIsStarted(true);
     // Additional logic for starting a journey can be added here
     setIsLoading(false);
   }, []);
