@@ -1,7 +1,7 @@
 import { Journey, Thread } from '@/types';
 import React, { FormEvent, useState } from 'react';
 
-interface ThreadListProps {
+export interface ThreadListProps {
   threads: Thread[];
   journeys: Journey[];
   currentThreadId: string | null;

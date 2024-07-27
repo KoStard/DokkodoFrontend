@@ -142,6 +142,7 @@ export const useLLMChat = (threadId: string) => {
     } finally {
       setIsLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, threadId]);
 
   const startJourney = useCallback(async () => {

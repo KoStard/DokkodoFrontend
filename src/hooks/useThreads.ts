@@ -26,7 +26,7 @@ export const useThreads = () => {
         body: JSON.stringify({ name, journey_id: journeyId }),
       });
       const data: Thread = await response.json();
-      setThreads(prevThreads => [...prevThreads, data]);
+      setThreads((prevThreads) => [...prevThreads, data]);
       return data;
     } catch (error) {
       console.error('Failed to create thread:', error);
@@ -35,8 +35,12 @@ export const useThreads = () => {
 
   const deleteThread = useCallback(async (id: string) => {
     try {
-      await fetch(`http://localhost:8000/api/threads/${id}`, { method: 'DELETE' });
-      setThreads(prevThreads => prevThreads.filter(thread => thread.id !== id));
+      await fetch(`http://localhost:8000/api/threads/${id}`, {
+        method: 'DELETE',
+      });
+      setThreads((prevThreads) =>
+        prevThreads.filter((thread) => thread.id !== id),
+      );
     } catch (error) {
       console.error('Failed to delete thread:', error);
     }
@@ -49,10 +53,10 @@ export const useThreads = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newName }),
       });
-      setThreads(prevThreads => 
-        prevThreads.map(thread => 
-          thread.id === id ? { ...thread, name: newName } : thread
-        )
+      setThreads((prevThreads) =>
+        prevThreads.map((thread) =>
+          thread.id === id ? { ...thread, name: newName } : thread,
+        ),
       );
     } catch (error) {
       console.error('Failed to rename thread:', error);

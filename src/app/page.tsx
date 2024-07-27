@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { ThreadList } from '@/components/ThreadList';
 import { Chat } from '@/components/Chat';
-import { useThreads } from '@/hooks/useThreads';
+import { ThreadList, ThreadListProps } from '@/components/ThreadList';
 import { useJourneys } from '@/hooks/useJourneys';
+import { useThreads } from '@/hooks/useThreads';
+import { useEffect, useState } from 'react';
 
 export default function App() {
   const { threads, createThread, deleteThread, renameThread } = useThreads();
@@ -56,17 +56,32 @@ export default function App() {
   );
 }
 
-const ThreadListSidebar = ({ isVisible, ...props }) => (
+interface ThreadListSidebarProps extends ThreadListProps {
+  isVisible: boolean;
+}
+
+const ThreadListSidebar = ({ isVisible, threads, journeys, currentThreadId, onSelectThread, onCreateThread, onDeleteThread, onRenameThread }: ThreadListSidebarProps) => (
   <div
-    className={`absolute top-0 left-0 h-full transition-transform duration-300 ease-in-out z-10 ${
-      isVisible ? 'translate-x-0' : '-translate-x-full'
-    }`}
+    className={`absolute top-0 left-0 h-full transition-transform duration-300 ease-in-out z-10 ${isVisible ? 'translate-x-0' : '-translate-x-full'
+      }`}
   >
-    <ThreadList {...props} />
+    <ThreadList
+      threads={threads}
+      journeys={journeys}
+      currentThreadId={currentThreadId}
+      onSelectThread={onSelectThread}
+      onCreateThread={onCreateThread}
+      onDeleteThread={onDeleteThread}
+      onRenameThread={onRenameThread}
+    />
   </div>
 );
 
-const MainContent = ({ currentThreadId }) => (
+interface MainContentProps {
+  currentThreadId: string | null;
+}
+
+const MainContent = ({ currentThreadId }: MainContentProps) => (
   <div className="flex-grow">
     {currentThreadId ? (
       <Chat threadId={currentThreadId} />
